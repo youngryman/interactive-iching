@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>The Interactive I Ching — Luckism</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&family=Spectral:ital,wght@0,400;0,500;1,400&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#1c1714;
+  --paper:#f3ece1;
+  --paper-deep:#e9dfcf;
+  --sienna:#9c4a2b;
+  --sienna-bright:#c0532c;
+  --gold:#b88a3e;
+  --line:#2a211b;
+  --muted:#6f6358;
+  --hair:#d3c6b2;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{
+  background:var(--paper);
+  color:var(--ink);
+  font-family:'Spectral',Georgia,serif;
+  line-height:1.55;
+  min-height:100vh;
+  padding:clamp(1rem,4vw,3rem);
+  display:flex;justify-content:center;
+}
+.wrap{width:100%;max-width:680px}
+
+.masthead{text-align:center;margin-bottom:2.2rem}
+.eyebrow{
+  font-family:'Spectral';font-style:italic;color:var(--sienna);
+  font-size:.95rem;letter-spacing:.04em;margin-bottom:.5rem;
+}
+h1{
+  font-family:'Fraunces';font-weight:500;
+  font-size:clamp(2rem,7vw,3.1rem);line-height:1.02;
+  font-optical-sizing:auto;letter-spacing:-.01em;
+}
+.dedication{
+  font-style:italic;color:var(--muted);font-size:1rem;
+  margin-top:.9rem;max-width:44ch;margin-left:auto;margin-right:auto;
+}
+
+/* ---- intro panel ---- */
+.intro{
+  max-width:46ch;margin:1.6rem auto 2.2rem;
+  font-size:1.02rem;color:var(--ink);
+  border-top:1px solid var(--hair);border-bottom:1px solid var(--hair);
+  padding:1.2rem 0;
+}
+.intro p{margin-bottom:.7rem}
+.intro p:last-of-type{margin-bottom:0}
+.intro .sig{
+  font-style:italic;color:var(--sienna);font-size:.95rem;
+  text-align:right;margin-top:.9rem;
+}
+
+/* ---- casting stage ---- */
+.stage{
+  background:var(--paper-deep);
+  border:1px solid var(--hair);
+  border-radius:3px;
+  padding:clamp(1.2rem,4vw,2rem);
+  margin-bottom:1.6rem;
+}
+.stage-head{
+  display:flex;justify-content:space-between;align-items:baseline;
+  margin-bottom:1.3rem;border-bottom:1px solid var(--hair);padding-bottom:.7rem;
+}
+.stage-title{font-family:'Fraunces';font-weight:500;font-size:1.15rem}
+.counter{font-family:'Fraunces';color:var(--sienna);font-size:1.05rem;font-variant-numeric:tabular-nums}
+
+/* the rising stack of locked lines */
+.stack{
+  display:flex;flex-direction:column-reverse;
+  gap:10px;min-height:200px;justify-content:flex-start;
+  margin-bottom:1.4rem;
+}
+.slot{display:flex;align-items:center;gap:.8rem;min-height:26px}
+.slot-num{
+  font-family:'Fraunces';color:var(--muted);font-size:.8rem;
+  width:1.4rem;text-align:right;flex:0 0 auto;
+}
+.linewrap{flex:1;height:26px;position:relative}
+
+/* a hexagram line drawn with divs.
+   Width is halved: the whole line is capped and centered.
+   --dot controls the changing-indicator diameter (white on solid,
+   black bridging the gap on broken). --gap is the broken-line gap. */
+.hline{
+  --gap:20px;
+  --dot:9px;
+  display:flex;gap:0;height:16px;align-items:center;
+  width:50%;margin:0 auto;position:relative;justify-content:center;
+}
+.hbar{background:var(--line);height:100%;border-radius:1px}
+.hbar.full{flex:1}
+.hbar.half{flex:0 0 calc((100% - var(--gap)) / 2)}
+.gap{flex:0 0 var(--gap)}
+
+/* changing-solid: white dot centered on the continuous black bar */
+.changing.solid::after{
+  content:"";position:absolute;left:50%;top:50%;
+  transform:translate(-50%,-50%);
+  width:var(--dot);height:var(--dot);border-radius:50%;
+  background:var(--paper);
+}
+/* changing-broken: black dot bridging the gap, kept smaller than the
+   gap so a sliver of paper remains between the dot and each bar end */
+.changing.broken::after{
+  content:"";position:absolute;left:50%;top:50%;
+  transform:translate(-50%,-50%);
+  width:var(--dot);height:var(--dot);border-radius:50%;
+  background:var(--line);
+}
+
+/* the live flickering window */
+.flicker{
+  height:26px;display:flex;align-items:center;
+  outline:2px solid transparent;border-radius:2px;
+}
+.flicker.armed{outline-color:var(--gold)}
+.flicker-line{flex:1}
+
+.cast-btn{
+  width:100%;font-family:'Fraunces';font-weight:500;font-size:1.05rem;
+  background:var(--sienna);color:var(--paper);
+  border:none;border-radius:2px;padding:.95rem;cursor:pointer;
+  letter-spacing:.01em;transition:background .15s;
+}
+.cast-btn:hover{background:var(--sienna-bright)}
+.cast-btn:active{transform:translateY(1px)}
+.cast-btn:disabled{background:var(--muted);cursor:default;opacity:.6}
+.cast-btn:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+
+.hint{font-style:italic;color:var(--muted);font-size:.9rem;text-align:center;margin-top:.9rem}
+
+/* ---- result ---- */
+.result{margin-top:.5rem}
+.result[hidden]{display:none}
+.hexcard{
+  border:1px solid var(--hair);border-radius:3px;
+  padding:clamp(1.2rem,4vw,2rem);margin-bottom:1.3rem;background:#fff8ee;
+}
+.hexcard .tag{
+  font-family:'Spectral';font-style:italic;color:var(--sienna);
+  font-size:.9rem;letter-spacing:.03em;margin-bottom:.4rem;
+}
+.hexcard h2{
+  font-family:'Fraunces';font-weight:600;font-size:1.6rem;line-height:1.05;
+  margin-bottom:.2rem;
+}
+.hexcard .num{color:var(--muted);font-family:'Fraunces';font-weight:400}
+.glyph{display:flex;flex-direction:column-reverse;gap:6px;margin:1rem 0 1.2rem}
+.glyph .hline{height:13px}
+.judgment{font-size:1.08rem;margin-bottom:.3rem}
+
+.lines-section{margin-top:1.2rem;border-top:1px solid var(--hair);padding-top:1rem}
+.lines-section h3{
+  font-family:'Fraunces';font-weight:500;font-size:1rem;color:var(--sienna);
+  margin-bottom:.7rem;letter-spacing:.02em;
+}
+.cline{display:flex;gap:.7rem;margin-bottom:.7rem}
+.cline .ln{font-family:'Fraunces';color:var(--sienna-bright);flex:0 0 auto;font-size:.95rem}
+.cline .tx{font-size:1.02rem}
+
+.arrow{
+  text-align:center;font-family:'Fraunces';color:var(--muted);
+  font-size:1.4rem;margin:.2rem 0 1rem;
+}
+.allchange{
+  background:rgba(192,83,44,.07);border-left:3px solid var(--sienna-bright);
+  padding:.8rem 1rem;margin-top:1rem;font-style:italic;font-size:1.02rem;
+}
+.no-change{font-style:italic;color:var(--muted);margin-top:.8rem}
+
+.again{
+  display:inline-block;margin-top:.4rem;font-family:'Fraunces';
+  background:none;border:1px solid var(--sienna);color:var(--sienna);
+  padding:.65rem 1.4rem;border-radius:2px;cursor:pointer;font-size:1rem;
+}
+.again:hover{background:var(--sienna);color:var(--paper)}
+.again:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+
+footer{text-align:center;margin-top:2.5rem;color:var(--muted);font-size:.85rem;font-style:italic}
+footer a{color:var(--sienna);text-decoration:none;border-bottom:1px solid var(--hair)}
+
+@media (prefers-reduced-motion:reduce){
+  .flicker-line{transition:none!important}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="masthead">
+    <div class="eyebrow">A Luckism instrument</div>
+    <h1>The Interactive I&nbsp;Ching</h1>
+    <p class="dedication">No yarrow sticks, no coins, no arithmetic. Just you, the uncontrollable yin-yang lines… and pure chance.</p>
+  </header>
+
+  <section class="intro">
+    <p>The I Ching, or Book of Changes, is an ancient Chinese system holding that whatever happens arises from the interplay of two forces, yin and yang. To consult it, a pattern of six yin-and-yang lines is formed by chance and read for its meaning.</p>
+    <p>Older methods generated numbers and assigned them to lines. This one is immediate — you pull a line directly from a display of every possible line, moving faster than you can react, so the result is pure chance.</p>
+    <p class="sig">— Daniel Young</p>
+  </section>
+
+  <section class="stage" id="stage">
+    <div class="stage-head">
+      <span class="stage-title">Interacting</span>
+      <span class="counter" id="counter">Line 1 of 6</span>
+    </div>
+    <div class="stack" id="stack"><!-- locked lines rise here --></div>
+    <div class="flicker" id="flicker" aria-live="off">
+      <div class="flicker-line" id="flickerLine"></div>
+    </div>
+    <button class="cast-btn" id="castBtn">Activate the possible first lines</button>
+    <p class="hint" id="hint">Tap once to start the energetic line display.</p>
+  </section>
+
+  <section class="result" id="result" hidden></section>
+
+  <footer>
+    Built on a freely given philosophy. Learn more at <a href="https://luckism.org">Luckism.org</a>.
+  </footer>
+</div>
+
+<script>
+const HEX={"1": {"t": "Active Force", "j": "When force is used in a responsible way and in a spirit of sacrifice the forecast is good.", "l": {"1": "Force stays hidden and inactive.", "2": "When great force emerges wise advice is needed.", "3": "The superior person is active when things are clear and cautious when they are not. This avoids problems.", "4": "Jumping into action there are no counter-indications.", "5": "When force is at its maximum it is beneficial to seek wise advice.", "6": "Uncontrolled force causes regrets.", "7": "Balanced forces guarantee good fortune."}, "p": [1, 1, 1, 1, 1, 1]}, "2": {"t": "Receptive Power", "j": "Receptiveness is supremely successful when used in a responsible way and in a spirit of sacrifice. The forecast is for success with the strength and gracefulness of nature. The superior person has a goal. Trying to lead causes confusion. Following gains control. Agreeability makes friends, aggressiveness loses them. Be accepting and the forecast is fortunate.", "l": {"1": "Moving cautiously leads to a strong position.", "2": "The receptive spirit succeeds without aggressive action.", "3": "Modesty is advisable. It may lead to great accomplishments with endless benefits.", "4": "Complete self-containment earns neither praise or blame.", "5": "Receptiveness is the source of good fortune.", "6": "The most powerful forces are in conflict and vitality is lost.", "7": "Overflowing good fortune is indicated."}, "p": [0, 0, 0, 0, 0, 0]}, "3": {"t": "Early Growth", "j": "To grow in a responsible way and in a spirit of sacrifice makes the forecast good. It is not the time for big goals. Cultivating the present position is best.", "l": {"1": "It is best to stay in one's territory and cultivate the present position.", "2": "The difficulty is inherent in the process. The obstacle is not evil but simply the time required for the lucky outcome.", "3": "Hunting without a guide causes one to lose the trail. The superior person recognizes the signs, stays in place and avoids the mistake of moving ahead.", "4": "Forward movement is lucky. Searching for a unified relationship will bring good fortune and definite advantages.", "5": "Riches grow. The signs are good for small things but not for big things.", "6": "Uncoordinated movement causes a flood of trouble."}, "p": [1, 0, 0, 0, 1, 0]}, "4": {"t": "Immaturity", "j": "Act unselfishly. The source of wisdom does not seek out the young and ignorant. The young and ignorant must seek out the source. First questions get a response but repeating them is disrespectful and gets no response. Make use of the insights.", "l": {"1": "Young energy needs discipline to mature. However, excessive restriction will cause regret and should be removed.", "2": "Tolerating immaturity is fortunate. Feminine partnership is fortunate. Heirs are capable of managing family affairs.", "3": "It is not time to choose a partner. Fascination with wealth causes a loss of control. None of this will be advantageous.", "4": "To be surrounded by immaturity is unfortunate.", "5": "Pure innocence is fortunate.", "6": "The immature person must be disciplined. It is better to oppose wrongdoing than to do wrong."}, "p": [0, 1, 0, 0, 0, 1]}, "5": {"t": "Waiting", "j": "Be confident. Unselfish offerings are splendid. The forecast is fortunate. It is advantageous to begin a great undertaking.", "l": {"1": "Waiting at the border is correct. Perseverance is good. There are no counter-indications.", "2": "Waiting in changing conditions may be criticized but the outcome is fortunate.", "3": "Waiting in a bogged-down condition invites danger.", "4": "Stop waiting in the most dangerous place. Escape.", "5": "Waiting with adequate provisions indicates good fortune.", "6": "Go deep inside. Treat unexpected arrivals honorably. Good fortune comes in the end."}, "p": [1, 1, 1, 0, 1, 0]}, "6": {"t": "Conflict", "j": "Overconfidence is an obstacle. Be cautious. The middle is fortunate. The end is not. Seek the advice of a wise person. Do not seek big objectives.", "l": {"1": "Do not pursue the matter. There may be some criticism but the outcome will be fortunate.", "2": "Immediate withdrawal to secure home ground is correct.", "3": "Traditional virtues provide strength when the signs show danger. In the end there is good fortune. Work of great importance never ends.", "4": "The conflict cannot be sustained. Return immediately to the path of harmony. Make peace. The end is good fortune.", "5": "The conflict brings great good fortune.", "6": "Victory in the conflict is unstable and temporary."}, "p": [0, 1, 0, 1, 1, 1]}, "7": {"t": "An Organization", "j": "The forecast is good when responsible people lead. There is good fortune and no error.", "l": {"1": "When the organization starts out in a routine way it is not good and leads to misfortune.", "2": "Being close to the center of control is good and error-free. It leads to important responsibilities.", "3": "An organization carrying dead weight is a misfortune.", "4": "The organization retreats. No problem.", "5": "The opportunity is there. Seizing it is the way to profit. If the leadership is poor the forecast turns to misfortune.", "6": "A great leader issues orders, establishes great organizations and supports their personnel. Such a person does not employ inferior people."}, "p": [0, 1, 0, 0, 0, 0]}, "8": {"t": "Joining", "j": "Good fortune flows from a natural source with powerful and enduring signs. There are no bad omens. Do not rest. It is time to join. Latecomers risk misfortune.", "l": {"1": "Join with sincerity. No problem. Be as full of confidence as a full ceramic pot. In the end, joining has good luck.", "2": "Unity starts within, inside. The forecast is for good fortune.", "3": "Joining with bad persons.", "4": "Joining on the outside indicates good fortune.", "5": "A glorious union. Superior people show more restraint than greedy people. The prospects are good.", "6": "Joining together without a leader brings misfortune."}, "p": [0, 0, 0, 0, 1, 0]}, "9": {"t": "Small Offerings", "j": "Small offerings influence things. The signs of benefit are there but not the benefit itself.", "l": {"1": "Returning to one's own true path is always auspicious and brings good fortune.", "2": "Being compelled to return is fortunate.", "3": "Interference with movement and antagonism are present.", "4": "Sincerity removes danger and fear. No problem.", "5": "Confident behavior encourages attachments. For wealth, use those who are close.", "6": "The natural cycle is over. The place is complete. Reputation and virtue are secure. The feminine instinct senses danger. The moon is almost full. The superior person should not move forward."}, "p": [1, 1, 1, 0, 1, 1]}, "10": {"t": "Stepping", "j": "Stepping into danger escapes harm. A thankful offering is called for.", "l": {"1": "Simply step forward. No problem.", "2": "Walk on the true way. It is smooth and open. The detached person sees good fortune ahead.", "3": "Impaired vision and impaired mobility can still step forward. But they can lead into danger. The unqualified person impersonates a ruler.", "4": "Stepping into danger with extreme caution eventually leads to good fortune", "5": "Danger is forecast even though one steps confidently.", "6": "Study the surrounding circumstances and the good omens. Moving in harmony with them brings great good fortune."}, "p": [1, 1, 0, 1, 1, 1]}, "11": {"t": "Climax", "j": "The small leave and the great arrive. Good fortune. A thankful offering is called for.", "l": {"1": "Uproot the entire obstacle. Move forward into good fortune.", "2": "Stick to the natural. Overcome obstacles with simple means. Do not abandon or neglect friends. Keeping to the middle leads to honor.", "3": "Without level places there would be no slopes, without forward movement, no return. Forecasting without error is difficult. No matter. Sincerity is rewarded and earns happiness.", "4": "Flitting back and forth. Relying on the assets of others. Unlimited, perhaps excessive, reliance on confidence.", "5": "The supreme leader and the marriage of a close relative. Treat happiness as great good fortune.", "6": "The defenses are completely down, organized force useless. What's done is done and unavoidable. It is regrettable."}, "p": [1, 1, 1, 0, 0, 0]}, "12": {"t": "Obstruction", "j": "It is an obstruction due to opposition. The superior person's forecasts are useless. The small arrive and the great leave.", "l": {"1": "Uproot the entire obstacle. Move forward into good fortune. A thankful offering is called for.", "2": "Hold and support the little people. Good luck. The great person stops and this leads to success.", "3": "Hold out an offering to make up for doing wrong.", "4": "This is the highest law. No problem. Sharing the fertile land will lead to happiness.", "5": "The great person rests and stops with good luck. Take cover in the naturally protected place.", "6": "The obstruction is overcome and the former difficulty is followed by joy."}, "p": [0, 0, 0, 1, 1, 1]}, "13": {"t": "Cooperation", "j": "Naturally unselfish cooperation in a wild place makes it a good time to seek great objectives. The wise person's forecast is valuable.", "l": {"1": "Cooperation at the beginning. No problems.", "2": "Cooperation in sadness. Regrets.", "3": "Cooperation needs long preparation before moving from a low position to a higher one.", "4": "In a strong position, unassailable, cooperation leads to good fortune.", "5": "Cooperation begins in tears but ends in laughter. The organizer controls and assists.", "6": "Cooperation away from the center gives no cause for regret."}, "p": [1, 0, 1, 1, 1, 1]}, "14": {"t": "Great Assets", "j": "Great assets mean great, unselfish sacrifice.", "l": {"1": "Keeping away from damage and injury is a hard rule to follow but it avoids problems.", "2": "A large vehicle and a destination. No problem.", "3": "Some sacrifices are reserved for the powerful and should not be attempted by others.", "4": "Modest assets are not a problem.", "5": "Joinder with confident people is majestic. Good fortune.", "6": "A person under cosmic protection has good fortune and undoubted advantages."}, "p": [1, 1, 1, 1, 0, 1]}, "15": {"t": "Modesty", "j": "An unselfish offering helps the superior person achieve results.", "l": {"1": "Modesty and humility help the superior person accomplish great things and obtain good fortune.", "2": "A reputation for modesty indicates good fortune.", "3": "Working modestly, the superior person gets results and good fortune.", "4": "The modest and unassuming person cannot lose.", "5": "Without wealth, draw on others. It is even advantageous to take aggressive action.", "6": "A reputation for modesty even allows using an organized force to conquer all."}, "p": [0, 0, 1, 0, 0, 0]}, "16": {"t": "Smooth Movement", "j": "It is a good time to add loyal supporters and make powerful moves.", "l": {"1": "A reputation for pleasure leads to misfortune.", "2": "Solid as a rock and honest as the day is long. The forecast is for good fortune.", "3": "Astonishing pleasure leads to regret and delay.", "4": "The essence of pleasure. The rich get richer. Friends stick close as glue.", "5": "Illness is in the forecast, chronic but not fatal.", "6": "Dark pleasures are enjoyed. Changes are coming. No problem."}, "p": [0, 0, 0, 1, 0, 0]}, "17": {"t": "Following", "j": "Start with an unselfish offering. Profit from the forecast. No problem.", "l": {"1": "In changing conditions the forecast is good. Going outside to communicate is a good idea.", "2": "Immature ties cause one to lose the experienced leader.", "3": "Connecting to the mature leader eliminates immaturity. Following and seeking leads to gain. Benefit from following the forecast.", "4": "Following, possessing and grabbing lead to a forecast of misfortune.", "5": "Have confidence in the enlightened way. What can go wrong? Have confidencein what is excellent. Good fortune.", "6": "The followers are completely caught up, connected and tied. The leader makes unselfish offerings in a lucky place."}, "p": [1, 0, 0, 1, 1, 0]}, "18": {"t": "Poisonous Power", "j": "Start out with an unselfish offering. It is advantageous to begin a great undertaking with meticulous care beforehand and careful review afterwards.", "l": {"1": "The child learns from examining the father's destroyed business. No problem. Danger exists but the end is fortunate.", "2": "The mother's business is destroyed. Forecasting is impossible.", "3": "The father's business is destroyed. Little people may have regrets but there is no big problem.", "4": "The aftereffects of the father's destruction are still felt. Moving forward will be regretted.", "5": "The father's business is destroyed. Bury it with ceremony.", "6": "There is no higher business than your own."}, "p": [0, 1, 1, 0, 0, 1]}, "19": {"t": "Approaching", "j": "Start with an unselfish offering and benefit from the forecast. Going beyond the natural harvest brings misfortune.", "l": {"1": "All arrive. The forecast is for good fortune.", "2": "All arrive. Good fortune. Undoubtedly advantageous.", "3": "A sweet arrival. There is no profit anywhere. The grief is over. There are no bad signs.", "4": "The arrival point is reached. There are no bad signs.", "5": "Knowledge arrives. The superior person moves correctly. Good fortune.", "6": "Honesty arrives. Good fortune and no mistakes."}, "p": [1, 1, 0, 0, 0, 0]}, "20": {"t": "Observation", "j": "It is a time of preparation, not the time for the main offering. Be sincere, dignified and sympathetic.", "l": {"1": "Naive observations are acceptable from the ordinary person but regrettable from the superior person.", "2": "Concealed observation. There is benefit from feminine forecasting.", "3": "Self-observation teaches us when to advance and when to withdraw.", "4": "Observing the condition of the country enables one to advise rulers.", "5": "Self-observation helps the superior person avoid making mistakes.", "6": "Observing others helps the superior person avoid making mistakes."}, "p": [0, 0, 0, 0, 1, 1]}, "21": {"t": "Biting", "j": "An unselfish offering. Litigation is advantageous.", "l": {"1": "Strong punishment is not a mistake.", "2": "Biting into the core is not a mistake.", "3": "Biting into spoiled food causes minor distress. No problem.", "4": "Biting into something tough leads to value. Profit from difficulties. The forecast is fortunate.", "5": "Biting into something tough leads to treasure. Danger ahead but no problem.", "6": "Severe punishment and misfortune."}, "p": [1, 0, 0, 1, 0, 1]}, "22": {"t": "Decoration", "j": "An unselfish offering. A modest undertaking will be favored.", "l": {"1": "Decorate the basics. Leave the vehicle and proceed under your own power.", "2": "Decorate the adult part.", "3": "A shining decoration keeps good fortune flowing.", "4": "Elaborate decorations indicate a loving friend not a robber.", "5": "Memorial decorations, even though they are not generous, bring good fortune in the end.", "6": "Simple decorations avoid problems."}, "p": [1, 0, 1, 0, 0, 1]}, "23": {"t": "Dismantling", "j": "There is no gain in having an objective.", "l": {"1": "The foundation is unsupported. It would be unfortunate to disregard the forecast.", "2": "The structure is dismantled. It would be unfortunate to disregard the forecast.", "3": "Dismantled. No problem.", "4": "The surface is stripped away. Misfortune.", "5": "Great bounty and good connections are certainly advantageous.", "6": "A ripe result has not been harvested. The superior person makes gains.The inferior person dismantles the basic structure."}, "p": [0, 0, 0, 0, 0, 1]}, "24": {"t": "Returning", "j": "An unselfish offering. There is no rush to enter or leave. Friends will come. Circle and return to your true path. Relatively soon the return comes. It is advantageous to have an objective.", "l": {"1": "The return is close. Don't dwell on regret. Great good fortune comes.", "2": "Rest and return. Good fortune.", "3": "Incessant returns are dangerous. No problem.", "4": "Keep yourself in the center when returning.", "5": "Honesty returns. No problem.", "6": "A confused return brings misfortune and repeated evil. Using and moving the largest force ends in a great defeat. The society and the leader experience misfortune, lasting for a very long time."}, "p": [1, 0, 0, 0, 0, 0]}, "25": {"t": "Uncalculating", "j": "Start with an unselfish offering and profit from the forecast. Behaving without correctness leads to misfortune and even having an objective yields no profit.", "l": {"1": "Moving without calculating is free of error. Good fortune.", "2": "Harvesting without plowing. The wasteland becomes a cultivated field. It is advantageous to have an objective.", "3": "Uncalculated misfortune is attached to an asset. It is gain for the traveler and calamity for the city-dweller.", "4": "Make the forecast. No problem.", "5": "Uncalculated illness. Without medicine joy comes.", "6": "Uncalculated action is unfortunate. No place is good."}, "p": [1, 0, 0, 1, 1, 1]}, "26": {"t": "Controlled Power", "j": "Profit from the forecast. No need to eat at home. Good fortune. It is a good time for great undertakings.", "l": {"1": "There is danger ahead. It is best to finish.", "2": "The vehicle breaks down.", "3": "Lead with caution and profit from difficulties by means of forecasting.", "4": "Regular defensive training is helpful. It is advantageous to have a goal.", "5": "Immature power under control indicates great good fortune.", "6": "Sustained self-control and sacrifice indicate good fortune. Movement on the highest plane is achieved by sacrifice."}, "p": [1, 1, 1, 0, 0, 1]}, "27": {"t": "Sustenance", "j": "The forecast is for good fortune. Pay attention to the method of nourishment and how people sustain themselves.", "l": {"1": "Abandoning the harmonious, traditional way and focusing on sustenance too closely leads to misfortune.", "2": "A blow to the sustaining system disrupts the flow of energy. Moving ahead leads to misfortune.", "3": "The sustaining system is shaky. The forecast is for misfortune. A long period when no place is profitable.", "4": "A jolt to the sustaining system brings good fortune. The alert animal sees clearly and is focused on pursuit. This is not amistake.", "5": "If the channels of energy are shaken up and the forecast is followed, good fortune comes. But it is not yet time for a great undertaking.", "6": "Preoccupation with nourishment is the danger. It is a time of good fortune and advantageous for a great undertaking."}, "p": [1, 0, 0, 0, 0, 1]}, "28": {"t": "Extraordinary Situation", "j": "The central support is strained. It is advantageous to have a new place in mind.", "l": {"1": "Starting with a natural base is not a mistake.", "2": "The withered plant bears new shoots, like an old man taking a wife. It is definitely advantageous.", "3": "A strained central support leads to misfortune.", "4": "A strong central support means good fortune. If its connections become loose there will be regrets.", "5": "The withered plant bears flowers like an older woman taking a husband. It is blameless but fruitless.", "6": "The process of getting through and crossing the obstacle will be overwhelming. It is blameless misfortune."}, "p": [0, 1, 1, 1, 1, 0]}, "29": {"t": "Pitfalls", "j": "A series of pitfalls can be passed with confidence. Strengthen the heart with an unselfish offering. Action brings honor.", "l": {"1": "A series of pitfalls. Entering them is bad.", "2": "In a dangerous pit prayers have little effect.", "3": "There are pitfalls in all directions and the danger of being trapped. There is no use entering.", "4": "Life-giving supplies and practical sacrifices offer a way out. In the end, there is no mistake.", "5": "The pit is not full. Recognize its potential for completeness and peacefulness and there will be no error", "6": "Tied up tight in a bad place for three years without gain. This is misfortune."}, "p": [0, 1, 0, 0, 1, 0]}, "30": {"t": "Brightness", "j": "Profit from the forecast. Make an unselfish offering. Growing things in a balanced way brings good fortune.", "l": {"1": "Growing things in a balanced way brings good fortune.", "2": "Sunlight indicates great good fortune.", "3": "In the time of the setting sun some beat time and sing, others bemoan the misfortune of old age.", "4": "Brightness flares up, dies down and is forgotten.", "5": "A sympathetic flow of tears and grief is fortunate.", "6": "The leader uses power to subdue opposition without losing luster. It is not mistaken."}, "p": [1, 0, 1, 1, 0, 1]}, "31": {"t": "Give And Take", "j": "Make an unselfish offering and profit from the forecast. It is good fortune to take a mate.", "l": {"1": "Give and take begins at the extremities.", "2": "If give and take leads to movement there will be misfortune. Stillness will be fortunate.", "3": "Resist the desire to move or follow. It will be regretted.", "4": "Good fortune is in the forecast. Regrets disappear. But your hesitation and uncertainty might mislead your friends.", "5": "Movement, though under tension, does not cause regret.", "6": "Movement affects communication."}, "p": [0, 0, 1, 1, 1, 0]}, "32": {"t": "Endurance", "j": "Make an unselfish offering. There are no bad signs. Profit from the forecast. It is advantageous to have an objective.", "l": {"1": "Preoccupation forecasts misfortune. No goal is reachable.", "2": "Regrets disappear.", "3": "Virtue which does not last ends in disgrace and the forecast is for repentance.", "4": "The hunt is in vain.", "5": "If virtue is steady the forecast is good for feminine intuition and bad for masculine certainty.", "6": "Shaky action is unfortunate."}, "p": [0, 1, 1, 1, 0, 0]}, "33": {"t": "Hiding", "j": "Make an unselfish offering. The forecast is for small profits.", "l": {"1": "Almost completely hidden, there is still danger. Having an objective is useless.", "2": "To hold on to things, use a cover. Do not remove it.", "3": "Those who are tied up and hidden endure illness and danger. Those who are submissive have good fortune.", "4": "Hiding goodness brings the superior person the good fortune denied to the inferior person.", "5": "Hiding excellence indicates good fortune.", "6": "Hiding riches is clearly advantageous and insures great profit."}, "p": [0, 0, 1, 1, 1, 1]}, "34": {"t": "Great Strength", "j": "Great Strength. Profit from the forecast.", "l": {"1": "Power begins to emerge. Immediate advancement would be unfortunate.", "2": "The forecast is for good fortune.", "3": "The inferior person uses power; the superior person uses stratagems. The forecast shows danger. Misusing power is like a goat butting a thicket and getting its horns stuck.", "4": "The forecast is for good fortune and the vanishing of regret. The thicket is cleared with no entanglement. Momentum is very strong.", "5": "Loss due to changing circumstances causes no regret.", "6": "Strength runs into a wall. It can't go forward or backward and no goal is advantageous. After difficulty comes good fortune."}, "p": [1, 1, 1, 1, 0, 0]}, "35": {"t": "Advancement", "j": "Prosperity comes for a member of the upper class in a form which is fruitful and abundant. Multiple honors come quickly.", "l": {"1": "Advancement and destruction are parts of a cycle. The forecast is for good fortune. With confidence and generosity there will be no mistake.", "2": "Advancement and sorrow are parts of a cycle. The forecast is for good fortune. Accept the great benefit and and blessing coming from an ancestor.", "3": "There is complete trust and regrets disappear.", "4": "Advancement beyond the natural limits signals danger.", "5": "Regrets disappear. Mindless of losing or winning one moves ahead to good fortune and undoubted advantage.", "6": "Punitive advancement mixes danger, good fortune and blamelessness. The forecast is for regret."}, "p": [0, 0, 0, 1, 0, 1]}, "36": {"t": "Dimming Light", "j": "Profiting from difficulties is the forecast.", "l": {"1": "The light source glides with minimum effort. The superior person goes without food but has a goal and controls events by the power of communication.", "2": "The light source is damaged but, using strong, natural help achieves good fortune.", "3": "The light source captures the main opponent. Do not forecast in haste.", "4": "Go for the heart of the light source through the most strategic points.", "5": "Let the light source of opponents continue to shine and you will profit in the forecast.", "6": "Neither bright nor dark. Recognize the cycle of life which first rises to heaven and then enters the earth."}, "p": [1, 0, 1, 0, 0, 0]}, "37": {"t": "The Family", "j": "Profit from the feminine forecast.", "l": {"1": "Family discipline is maintained. Regrets disappear.", "2": "Do not go far. Maintain the center and nourish it. The forecast is for good fortune.", "3": "Strict discipline and repentance within the family lead to good fortune.", "4": "Immature frivolity leads to remorse.", "5": "Family and wealth bring great good fortune.", "6": "The supreme leader comes close to the family. No anxiety. Good fortune. Proceed with royal confidence to good fortune in the end."}, "p": [1, 0, 1, 0, 1, 1]}, "38": {"t": "Unusual", "j": "There is good fortune in small matters.", "l": {"1": "Regrets disappear. Don't follow the lost horse. It will return by itself. Look out for bad people and you will avoid mistakes.", "2": "Meet the master on the way. No mistake.", "3": "The vehicle is slowed, its momentum gone. The passenger is humiliated and punished. The end comes even before things start.", "4": "Unusual. The lone person meets helpful spirits in a sincere relationship. There is danger but no mistake.", "5": "Regrets disappear. Spiritual focus goes beneath the surface. Move. What mistake could there be?", "6": "Unusual and unique visions. An animal carrying mud. A carriage transporting ghosts. Drawing the bow and then unbending it. Not an adversary but someone to love. Go and meet the fertility of nature. Good fortune rules."}, "p": [1, 1, 0, 1, 0, 1]}, "39": {"t": "Difficulty", "j": "A difficult situation in which consolidation of forces is advisable and advancement is inadvisable. It would be good to see a wise person. The forecast shows good fortune.", "l": {"1": "Going forward leads to difficulties.", "2": "A leader's assistant faces many difficulties with innocent strength.", "3": "Going forward leads to difficulties. Turn around and come back.", "4": "Going forward leads to difficulties. Withdraw in order to organize.", "5": "At the time of greatest difficulty friends arrive.", "6": "Going forward leads to difficulties, withdrawing leads to great accomplishment and good fortune. It is advisable to see a wise person."}, "p": [0, 0, 1, 0, 1, 0]}, "40": {"t": "Relaxation", "j": "It is a time of imminent release. If there is no objective, withdrawal is fortunate. If an objective exists, speedy action will be fortunate.", "l": {"1": "There is no error.", "2": "The patient hunter catches many clever animals and earns a golden reward.The forecast is for good fortune.", "3": "Traveling in a showy style attracts the attention of robbers. Keeping this up will lead to regrets.", "4": "Relax. Friends will come and can be trusted.", "5": "The superior person finds a release from constraints, causes good fortune and gains the confidence of followers.", "6": "The leader hits a high, protected target, causing everything to go well."}, "p": [0, 1, 0, 1, 0, 0]}, "41": {"t": "Reductions", "j": "Confident reductions generate good fortune. No bad omens. Make a forecast. A goal is advantageous. Important offerings can be made with simple means.", "l": {"1": "Hurrying to help others is correct. Consider reductions.", "2": "Benefit from the forecast. Aggressiveness is bad. It will cause decreases not increases.", "3": "The group will be decreased in number. The individual will gain companions.", "4": "Illness is reduced by speedy communication, bringing happiness without errors.", "5": "A tremendous increase is bestowed in a way that cannot be refused. That is supreme good fortune.", "6": "It is a time of increase not reduction. The forecast is good fortune. Set a goal. Add people not material."}, "p": [1, 1, 0, 0, 0, 1]}, "42": {"t": "Increase", "j": "It is favorable to have an objective and the right time to set out on a great undertaking.", "l": {"1": "The time is favorable for great accomplishments, leading to blameless, supreme good fortune.", "2": "A tremendous and irresistable increase is bestowed and steadiness in that direction brings good fortune. It brings together material and spiritual power.", "3": "Increase through unfortunate events is no cause for blame. If received in sincerity and balance it is as if it was authorized by the highest authority.", "4": "One who walks the middle path will be followed by the leader and entrusted with supremely important undertakings.", "5": "A kind heart receives an increase with no questions asked. Everyone recognizes this as moral excellence.", "6": "The person whose actions are insincere and aggressive benefits no one and invites misfortune."}, "p": [1, 0, 0, 0, 1, 1]}, "43": {"t": "Determination", "j": "Evil must be resolutely opposed in the center of power even though there is danger in telling the truth. Notify your natural allies. Although violence is not advisable, it is good to have a plan.", "l": {"1": "Unbalanced movement will not work and is mistaken.", "2": "The situation is alarming and violence is possible. Stay calm and prepared.", "3": "There is a cruel show of strength. The superior person tries to solve the problem alone with mixed results. All thisis blameless.", "4": "Punishment makes it hard to move. Regrets dissappear. What is heard is not believable.", "5": "Overgrowth must be weeded. Moving in the center is not a mistake.", "6": "Misfortune comes without a warning."}, "p": [1, 1, 1, 1, 1, 0]}, "44": {"t": "Sudden Encounter", "j": "A sudden encounter with feminine power. It is not a time for joining together.", "l": {"1": "It is lucky that forward movement has been stopped. Objectives and entanglements lead to misfortune.", "2": "Fertility is blameless. Visitors are of no benefit.", "3": "Punishment impedes movement. There is some danger but no great error.", "4": "An empty container is the beginning of misfortune.", "5": "A beautiful and fruitful outcome falls spontaneously from the heavens.", "6": "Intercourse may cause regret but is not wrong."}, "p": [0, 1, 1, 1, 1, 1]}, "45": {"t": "Gathering Together", "j": "A spirit of sacrifice fills the gathering. The leader's respect for spiritual matters and wise advice insures success for as long as it lasts. Great sacrifices bring good fortune and movement in the chosen direction.", "l": {"1": "The spirit is sincere but does not produce a result. Disorder can be met with a gathering. Comforting brings happiness andends distress. Move. No counter-indications.", "2": "Good fortune leads the way without error. Stay sincere and benefit from sacrifices.", "3": "The gathering has some sadness. No advantage in sight but going ahead is is not a mistake and only slight trouble.", "4": "There is great good fortune and no error.", "5": "A highly placed person can organize a gathering without mistakes. Lack of confidence needs lasting spiritual strength. Regrets will fade away.", "6": "A message contains tears but is without fault."}, "p": [0, 0, 0, 1, 1, 0]}, "46": {"t": "Ascending", "j": "Start out in a spirit of sacrifice on the ascent to success. It is essential to consult a wise person in order to overcome anxiety. Movement towards a bright region is fortunate.", "l": {"1": "Ascending by means of promotion from above is great good fortune.", "2": "A sincere spirit makes even small sacrifices effective.", "3": "Ascending into an empty zone is unobstructed but unfulfilling.", "4": "A leader who makes traditional sacrifices brings good fortune and freedom from error.", "5": "Going up step by step with the confidence and deliberation of a participant in a ceremony is fortunate.", "6": "Ascending in poor visibility requires constant vigilance."}, "p": [0, 1, 1, 0, 0, 0]}, "47": {"t": "Adversity", "j": "With the spirit of sacrifice those who are truly great can achieve success. It is a time when words do not inspire confidence.", "l": {"1": "Punishment, gloom and isolation persist for a long time.", "2": "Adversity in the midst of plenty. Authorities impose discipline. A spirit of sincere sacrifice is advisable.", "3": "In a hard place, grasping at thorns for support. Even at home no help is seen. Bad luck.", "4": "Moving slowly in a fancy vehicle which is bogged down. It is embarrassing, but not for long.", "5": "Severe punishment and adversity come from the actions of powerful people. In time and through a spirit of sacrifice and prayer happiness may come", "6": "Adversity comes from entanglements. In this predicament actions are regrettable. Sincere regrets make renewal possible."}, "p": [0, 1, 0, 1, 1, 0]}, "48": {"t": "The Well", "j": "The surroundings change but the well does not change. It does not gain or lose, advance or withdraw. It remains a well. It is unfortunate if one's rope can't reach the water or one's container breaks.", "l": {"1": "The muddy water at the bottom of the well is undrinkable. Animals do not come to an old well.", "2": "Leaks in the well let water escape and only mud-creatures benefit. The water jar also leaks.", "3": "The well water is clear and could be a good source. Sadly, no one drinks from it. In the same way a wise leader could bea source of good fortune.", "4": "The well is being relined and the resulting delay is blameless.", "5": "Clear, pure spring water feeds the well. Freely enjoy it.", "6": "The well water is completely accessible and reliable, representing the greatest good fortune."}, "p": [0, 1, 1, 0, 1, 0]}, "49": {"t": "Natural Change", "j": "A natural change instills confidence. A sense of original greatness and a spirit of sacrifice lead to a great forecast.", "l": {"1": "Exercise self-control while strength gathers.", "2": "When the time for change comes, action is fortunate and correct.", "3": "At this point action would be unfortunate and persistence dangerous. Once the contemplated change has been planned thoroughly, it will be credible.", "4": "Regrets disappear. Confidence grows. Change has the ultimate justification.", "5": "The great person shows an irresistible purpose. Even without consulting the forecasters confidence is justified", "6": "The superior person is completely open to change. The inferior person only changes superficially. Big new objectives will be unfortunate but, with steadiness, the forecast is for good fortune."}, "p": [1, 0, 1, 1, 1, 0]}, "50": {"t": "Divine Container", "j": "The divine container is the original source of good fortune. It embodies the spirit of sacrifice.", "l": {"1": "Unconventional action is proper in order to maintain the divine container. Continuing the family by unusual means is not a mistake.", "2": "Things are bad for my enemy. It is not my doing. It is good fortune.", "3": "The container is defective, action is blocked and the best nourishment is wasted. Rain will wash away regrets and eventually there will be good fortune.", "4": "The container is badly damaged, the nourishment of important people spills on them and is lost. Evil results.", "5": "A valuable and beautiful container. It must be treated correctly if there is to be a good forecast.", "6": "The container is precious, indicating undoubted good fortune and success in every way."}, "p": [0, 1, 1, 1, 0, 1]}, "51": {"t": "Thunder Blast", "j": "A thunder blast brings blessing. The first shock turns to laughter. Although the blast causes fear over a great distance, the hand of a person engaged in a sacred act does not shake.", "l": {"1": "The shock of fear is followed by laughter and good fortune.", "2": "The shock of thunder brings danger and causes the loss of treasure. Go to a calm place. Do not chase the treasures, they will shortly be restored.", "3": "Thunder causes disorientation. Nevertheless, action will not be a mistake.", "4": "The shock of thunder muddies the situation.", "5": "Thunder blasts sound danger going ahead or going back. The loss is not as great as it seems. There will be income.", "6": "In the midst of general shock and fear, action would be a mistake. If the shock waves have moved on to others it is no mistake to start new relationships despite gossip."}, "p": [1, 0, 0, 1, 0, 0]}, "52": {"t": "Keeping Still", "j": "Keeping still to the point of losing awareness of one's self, to the point of moving without being noticed, frees one of error.", "l": {"1": "Keeping still at the very beginning is proper and leads to continuing benefit.", "2": "Keep still despite the desire to help and despite the resulting frustration.", "3": "Stifling natural urges disrupts the body and endangers the heart.", "4": "Keeping entirely still avoids harm.", "5": "Keeping quiet or choosing words very carefully eliminates the source of regret.", "6": "Honesty and stillness lead to good fortune."}, "p": [0, 0, 1, 0, 0, 1]}, "53": {"t": "Natural Development", "j": "A natural development like finding someone to marry is fortunate. The forecast is advantageous.", "l": {"1": "Natural creatures approach the shoreline. Danger and criticism for the inexperienced but no error.", "2": "Natural creatures approach the high points. They eat and drink happily, enjoying good fortune.", "3": "Natural creatures move to distant places. The adventurous mate does not return. The mother does not nurse the child. Other misfortunes. It is a good time only for resisting attacks.", "4": "Natural creatures approach an inappropriate place. They may find a suitable position and, if so, no error.", "5": "Natural creatures move to a high point with good fortune like a birth after years of infertility.", "6": "Natural creatures reach dry land. Anything connected to them has sacred power and good fortune."}, "p": [0, 0, 1, 0, 1, 1]}, "54": {"t": "Powerless Newcomer", "j": "The powerless newcomer takes a secondary role in the partnership, making great objectives inauspicious and the general outlook unfavorable.", "l": {"1": "The powerless newcomer has a servile role but, like a lame person, can still make progress and achieve good fortune.", "2": "Those with impaired vision can still see and profit from the advice of detached seers.", "3": "The powerless newcomer takes a more advantageous secondary role.", "4": "The powerless newcomer misses an appointment, is late but eventually joins a partnership.", "5": "The powerless newcomer is related to a powerful person and has hidden capacities like the power of the nearly full moon. Good fortune.", "6": "One person makes a fruitless offering. Another makes an empty sacrifice. None of this is favorable."}, "p": [1, 1, 0, 1, 0, 0]}, "55": {"t": "Great Abundance", "j": "In the spirit of sacrifice the leader gives abundantly and happily like the sun at midday.", "l": {"1": "When one meets a suitable partner or leader there is a fixed time for action. Move forward. There will be praise.", "2": "Abundant visionary power can clarify the strongest phenomenon. Although you may meet with distrust and dislike, stick confidently to the truth and good fortune will come.", "3": "Abundant powers of perception make faint objects visible. An accidental injury is blameless.", "4": "Abundant visionary power can clarify the strongest phenomenon. It pleases the ruler and leads to good fortune.", "5": "Great ability is recognized, leading to honor, praise and good fortune.", "6": "An abundant room in an empty house has no people coming through the door for a long time. Misfortune."}, "p": [1, 0, 1, 1, 0, 0]}, "56": {"t": "The Traveller", "j": "Small sacrifices are offered. The forecast is for travel and good fortune.", "l": {"1": "The traveller who becomes preoccupied with trivial matters attracts misfortune.", "2": "The traveler reaches an inn with wealth concealed and gains a trustworthy helper.", "3": "The traveler causes the destruction of the inn, loses a helper and danger is forecast.", "4": "The traveler maintains assets and security but has no inner peace.", "5": "The traveler hunts successfully but suffers a minor loss. In the end, praise and total good fortune.", "6": "The bird destroys its nest, first amusing then distressing the traveler. Carelessness loses an important asset. Misfortune."}, "p": [0, 0, 1, 1, 0, 1]}, "57": {"t": "Strong Wind", "j": "Small sacrifices help. It is favorable to have a goal in mind and to consult a wise person,", "l": {"1": "In a time of fluctuating movement it is favorable to have a disciplined person make the forecast.", "2": "When there are natural omens, rely on traditions, sensitive persons and chance. That will be fortunate and error-free.", "3": "Continuous strong wind is regretful.", "4": "Regrets disappear and the hunt is very successful.", "5": "The forecast is for good fortune, vanishing regrets and undoubted advantage without effort. Before and after the transition are particularly fortunate times.", "6": "A strong wind signals the loss of property and security and cannot be avoided."}, "p": [0, 1, 1, 0, 1, 1]}, "58": {"t": "Pleasure", "j": "Take pleasure in the spirit of sacrifice and the forecast is favorable.", "l": {"1": "Harmony and pleasure lead to good fortune.", "2": "Confidence and pleasure are auspicious and overcome regrets.", "3": "Forcing pleasure leads to evil.", "4": "A calculating and restless pleasure causes minor problems but allows happiness in the end.", "5": "Overconfidence is shown in something dangerous.", "6": "Pleasure is used for seduction."}, "p": [1, 1, 0, 1, 1, 0]}, "59": {"t": "Scattering", "j": "Scattering is done in the spirit of sacrifice. The leader returns to the sacred center. It is auspicious to seek great objectives and move forward.", "l": {"1": "Help is given with great natural strength and brings good fortune.", "2": "In the midst of scattering one finds a place of safety and regrets vanish.", "3": "Selfish thoughts are scattered and there will be no regret.", "4": "Factions are scattered with good fortune resulting. The scattering will reach peaks beyond the comprehension of crude people.", "5": "In a nervous time it is not a mistake to share wealth.", "6": "When there is a wave of violence leave and stay away. It is blameless."}, "p": [0, 1, 0, 0, 1, 1]}, "60": {"t": "Natural Limits", "j": "Natural limits are successful but should not develop into harsh restraints.", "l": {"1": "Staying close to home is blameless.", "2": "Staying too close to home is unfortunate.", "3": "A lack of restraint causes regret with no one to blame.", "4": "Satisfaction with limitations indicates success.", "5": "A model of restraint leads to good fortune. Going ahead is praiseworthy.", "6": "Harsh limitations forecast misfortune. Eventually, regrets disappear."}, "p": [1, 1, 0, 0, 1, 0]}, "61": {"t": "Inner Balance", "j": "Inner balance leads all creation to good fortune. It fosters great objectives and beneficial forecasts.", "l": {"1": "Stillness is fortunate but the imbalance of others may cause stress.", "2": "The caregiver invites the inexperienced to share nourishment.", "3": "In a strong relationship behavior fluctuates between loud activity and quiet, between weeping and singing.", "4": "With the cycle nearly complete, a source of natural strength disappears without causing harm.", "5": "In perfect balance, all are closely connected, all will be correct.", "6": "When overconfident boasting rises heavenward the forecast is for misfortune."}, "p": [1, 1, 0, 0, 1, 1]}, "62": {"t": "Slipping Through", "j": "With the spirit of sacrifice the forecast is good. It is a time for small matters not great accomplishments. The song of the flying bird comes down. Descending, not ascending, leads to great good fortune.", "l": {"1": "High flying leads to misfortune.", "2": "Contact with a secondary source in spiritual or practical matters is not a mistake.", "3": "It is not the time to attack or let down your guard. Unfortunate.", "4": "Confront the situation rather than bypass it. Danger ahead. Exercise caution. Excessive forecasting is useless.", "5": "Aiming high ends up with a lower success.", "6": "The high flyer goes too far and is trapped. Total misfortune."}, "p": [0, 0, 1, 1, 0, 0]}, "63": {"t": "After Completion", "j": "When the cycle has been completed in the spirit of sacrifice there can still be success in small matters. Good fortune in the beginning, disorder in the end.", "l": {"1": "The vehicle is slowed down and the movement is a bit clumsy. All this is without error.", "2": "An ornament is lost. It should not pursued because it will be restored shortly.", "3": "A dangerous undertaking takes a long time to be successful. Inferior people should not be used in such enterprises.", "4": "A temporary repair requires constant vigilance.", "5": "The extravagant offering does not equal the sincere small sacrifice. It is the latter which receives a blessing.", "6": "Getting in over your head is dangerous."}, "p": [1, 0, 1, 0, 1, 0]}, "64": {"t": "Nearly Complete", "j": "Even with a spirit of sacrifice and the goal nearly reached, immaturity brings failure. No good fortune anywhere.", "l": {"1": "Partial failure brings regret.", "2": "Slowing down the vehicle makes the forecast fortunate.", "3": "On the verge of completion, advancing to the final goal leads to misfortune. But an immediate obstacle can be overcome.", "4": "The forecast is for good fortune and no regrets. Shake things up in order to succeed in a difficult and long campaign. Eventually, rewards will come.", "5": "The forecast is good fortune without regrets. The shining and sincere behavior of the superior person leads to good fortune.", "6": "Wine is enjoyed in a victorious atmosphere. But if it goes to the head, good things will be spoiled."}, "p": [0, 1, 0, 1, 0, 1]}};
+const PAT={"111111": 1, "000000": 2, "100010": 3, "010001": 4, "111010": 5, "010111": 6, "010000": 7, "000010": 8, "111011": 9, "110111": 10, "111000": 11, "000111": 12, "101111": 13, "111101": 14, "001000": 15, "000100": 16, "100110": 17, "011001": 18, "110000": 19, "000011": 20, "100101": 21, "101001": 22, "000001": 23, "100000": 24, "100111": 25, "111001": 26, "100001": 27, "011110": 28, "010010": 29, "101101": 30, "001110": 31, "011100": 32, "001111": 33, "111100": 34, "000101": 35, "101000": 36, "101011": 37, "110101": 38, "001010": 39, "010100": 40, "110001": 41, "100011": 42, "111110": 43, "011111": 44, "000110": 45, "011000": 46, "010110": 47, "011010": 48, "101110": 49, "011101": 50, "100100": 51, "001001": 52, "001011": 53, "110100": 54, "101100": 55, "001101": 56, "011011": 57, "110110": 58, "010011": 59, "110010": 60, "110011": 61, "001100": 62, "101010": 63, "010101": 64};
+</script>
+<script>
+// ===== line types =====
+// 6 = changing solid (old yang) -> becomes broken
+// 7 = solid (young yang)
+// 8 = broken (young yin)
+// 9 = changing broken (old yin) -> becomes solid
+//
+// Eight-face pool (coin-method odds): of 8 equally likely faces,
+// four are solid (three stable 7, one changing 6) and
+// four are broken (three stable 8, one changing 9).
+// => solid 1/2, broken 1/2; any face is changing 1/4 (evenly split).
+const POOL = [7,7,7,6, 8,8,8,9];
+
+function isSolidNow(v){ return v===7 || v===6; }      // current appearance
+function isChanging(v){ return v===6 || v===9; }
+function transform(v){                                  // resulting line after change
+  if(v===6) return 8;   // changing solid -> broken
+  if(v===9) return 7;   // changing broken -> solid
+  return v;             // stable lines unchanged
+}
+
+// render a single line (returns an element)
+function lineEl(v, opts={}){
+  const wrap=document.createElement('div');
+  const solid=isSolidNow(v);
+  let cls='hline';
+  if(isChanging(v)) cls+=' changing '+(solid?'solid':'broken');
+  wrap.className=cls;
+  if(solid){
+    const b=document.createElement('div'); b.className='hbar full'; wrap.appendChild(b);
+  }else{
+    const l=document.createElement('div'); l.className='hbar half';
+    const g=document.createElement('div'); g.className='gap';
+    const r=document.createElement('div'); r.className='hbar half';
+    wrap.appendChild(l); wrap.appendChild(g); wrap.appendChild(r);
+  }
+  return wrap;
+}
+
+// ===== casting state machine =====
+const stack=document.getElementById('stack');
+const flicker=document.getElementById('flicker');
+const flickerLine=document.getElementById('flickerLine');
+const counter=document.getElementById('counter');
+const castBtn=document.getElementById('castBtn');
+const hint=document.getElementById('hint');
+const resultEl=document.getElementById('result');
+
+let cast=[];            // locked lines, bottom (index0) to top
+let spinning=false;
+let timer=null;
+let phase='idle';       // idle | spinning | done
+
+const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+const FLICK_MS = reduceMotion ? 90 : 38;   // faster than deliberate reaction time
+
+function paintFlicker(v){
+  flickerLine.innerHTML='';
+  flickerLine.appendChild(lineEl(v));
+}
+
+function startSpin(){
+  spinning=true;
+  flicker.classList.add('armed');
+  timer=setInterval(()=>{
+    const v=POOL[Math.floor(Math.random()*POOL.length)];
+    paintFlicker(v);
+    flicker.dataset.current=v;
+  }, FLICK_MS);
+}
+
+function stopAndLock(){
+  // Whatever is showing at the instant of the tap is locked.
+  // Reaction lag guarantees this is effectively chance, not choice.
+  clearInterval(timer);
+  spinning=false;
+  flicker.classList.remove('armed');
+  const v=parseInt(flicker.dataset.current,10);
+  cast.push(v);
+
+  // add to rising stack
+  const slot=document.createElement('div'); slot.className='slot';
+  const num=document.createElement('div'); num.className='slot-num'; num.textContent=cast.length;
+  const lw=document.createElement('div'); lw.className='linewrap';
+  lw.appendChild(lineEl(v));
+  slot.appendChild(num); slot.appendChild(lw);
+  stack.appendChild(slot);
+
+  flickerLine.innerHTML='';
+
+  if(cast.length>=6){
+    finish();
+  }else{
+    counter.textContent='Line '+(cast.length+1)+' of 6';
+    const ordinals=['first','second','third','fourth','fifth','sixth'];
+    castBtn.textContent='Activate the possible '+ordinals[cast.length]+' lines';
+    phase='between';
+  }
+}
+
+castBtn.addEventListener('click',()=>{
+  if(phase==='idle' || phase==='between'){
+    startSpin();
+    castBtn.textContent='Accept the uncontrollable flash';
+    hint.textContent='By tapping here you submit to the operation of chance.';
+    phase='spinning';
+  }else if(phase==='spinning'){
+    stopAndLock();
+    if(phase!=='done'){
+      hint.textContent='';
+    }
+  }
+});
+
+// ===== resolve & render reading =====
+function patternKey(arr){ return arr.map(v=>isSolidNow(v)?1:0).join(''); }
+function hexFromCast(arr){ return PAT[patternKey(arr)]; }
+
+function glyphFor(lines, markChanging){
+  const g=document.createElement('div'); g.className='glyph';
+  lines.forEach(v=>{
+    const el=lineEl(markChanging?v:(isSolidNow(v)?7:8));
+    g.appendChild(el);
+  });
+  return g;
+}
+
+function finish(){
+  phase='done';
+  document.getElementById('stage').style.opacity='.55';
+  castBtn.disabled=true;
+  counter.textContent='Complete';
+
+  const primNum=hexFromCast(cast);
+  const prim=HEX[primNum];
+  const changingPos=[];
+  cast.forEach((v,i)=>{ if(isChanging(v)) changingPos.push(i+1); });
+
+  let html='';
+
+  // PRIMARY
+  html+='<div class="hexcard">';
+  html+='<div class="tag">Your hexagram</div>';
+  html+='<h2>'+prim.t+' <span class="num">· '+primNum+'</span></h2>';
+  html+='<div data-glyph="prim"></div>';
+  html+='<p class="judgment">'+prim.j+'</p>';
+
+  const allSix = changingPos.length===6;
+  const special = (primNum===1 || primNum===2) && allSix;
+
+  if(changingPos.length===0){
+    html+='<p class="no-change">No changing lines. This hexagram alone is the answer.</p>';
+  }else if(special){
+    // hexagrams 1 & 2: use the 7th text instead of the six lines
+    html+='<div class="lines-section"><h3>All six lines change</h3>';
+    html+='<div class="allchange">'+prim.l['7']+'</div></div>';
+  }else{
+    html+='<div class="lines-section"><h3>Changing line'+(changingPos.length>1?'s':'')+'</h3>';
+    changingPos.forEach(p=>{
+      html+='<div class="cline"><span class="ln">'+p+'.</span><span class="tx">'+prim.l[String(p)]+'</span></div>';
+    });
+    html+='</div>';
+  }
+  html+='</div>';
+
+  // SECONDARY (only if there are changing lines)
+  if(changingPos.length>0){
+    const transformed=cast.map(transform);
+    const secNum=hexFromCast(transformed);
+    const sec=HEX[secNum];
+    html+='<div class="arrow">↓ becomes ↓</div>';
+    html+='<div class="hexcard">';
+    html+='<div class="tag">Transforms into</div>';
+    html+='<h2>'+sec.t+' <span class="num">· '+secNum+'</span></h2>';
+    html+='<div data-glyph="sec"></div>';
+    html+='<p class="judgment">'+sec.j+'</p>';
+    html+='</div>';
+  }
+
+  html+='<button class="again" id="againBtn">Consult again</button>';
+
+  resultEl.innerHTML=html;
+  resultEl.hidden=false;
+
+  // inject glyphs (DOM, not string)
+  resultEl.querySelector('[data-glyph="prim"]').appendChild(glyphFor(cast,true));
+  if(changingPos.length>0){
+    const transformed=cast.map(transform);
+    resultEl.querySelector('[data-glyph="sec"]').appendChild(glyphFor(transformed,false));
+  }
+
+  document.getElementById('againBtn').addEventListener('click',reset);
+  resultEl.scrollIntoView({behavior:reduceMotion?'auto':'smooth',block:'start'});
+}
+
+function reset(){
+  cast=[]; phase='idle';
+  stack.innerHTML='';
+  flickerLine.innerHTML='';
+  counter.textContent='Line 1 of 6';
+  castBtn.disabled=false;
+  castBtn.textContent='Activate the possible first lines';
+  hint.textContent='Tap once to start the energetic line display.';
+  document.getElementById('stage').style.opacity='1';
+  resultEl.hidden=true;
+  resultEl.innerHTML='';
+  window.scrollTo({top:0,behavior:reduceMotion?'auto':'smooth'});
+}
+</script>
+</body>
+</html>
